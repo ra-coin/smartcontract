@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 contract ERC20Interface {
     function totalSupply() public view returns (uint);
@@ -21,26 +21,26 @@ contract Ownable {
 
     // The Ownable constructor sets the original `owner` 
     // of the contract to the sender account.
-    function Ownable()  public {
+    constructor()  public {
         owner = msg.sender;
     } 
 
-    // Throws if called by any account other than the current owner
+    // Throw if called by any account other than the current owner
     modifier onlyOwner {
         require(msg.sender == owner);
         _;
     }
 
-    // Allows the current owner to transfer control of the contract to a newOwner
+    // Allow the current owner to transfer control of the contract to a newOwner
     function transferOwnership(address newOwner) public onlyOwner {
         require(newOwner != address(0));
         owner = newOwner;
     }
 }
 
-contract RCTokenTest is Ownable, ERC20Interface {
+contract RAcoinToken is Ownable, ERC20Interface {
     string public constant symbol = "RAC";
-    string public constant name = "RCTokenTest";
+    string public constant name = "RAcoinToken";
     uint private _totalSupply;
     uint public constant decimals = 18;
     uint private unmintedTokens = 20000000000*uint(10)**decimals; 
@@ -64,22 +64,25 @@ contract RCTokenTest is Ownable, ERC20Interface {
     mapping(address => LockupRecord)balancesLockup;
 
 
-    /* ====== JACKPOT IMPLEMENTATION ====== */
 
-    // Persentage for jackpot reserving during tokens transfer
+    /**
+     ====== JACKPOT IMPLEMENTATION ====== 
+     */
+
+    // Percentage for jackpot reserving during tokens transfer
     uint public reservingPercentage = 1;
     
     // Minimum amount of jackpot, before reaching it jackpot cannot be distributed. 
-    // Default vaule is 100,000 RAC
+    // Default value is 100,000 RAC
     uint public jackpotMinimumAmount = 100000 * uint(10)**decimals; 
     
     // reservingStep is used for calculating how many times a user will be added to jackpot participants list:
-    // times user will be add to jackpotParticipants list = transfer amount / reservingStep
+    // times user will be added to jackpotParticipants list = transfer amount / reservingStep
     // the more user transfer tokens using transferWithReserving function the more times he will be added and, 
-    // as a result, more chances to win the jackpot. Default vaule is 10,000 RAC
+    // as a result, more chances to win the jackpot. Default value is 10,000 RAC
     uint public reservingStep = 10000 * uint(10)**decimals; 
     
-    // The seed is used each time Jackpot is distributing for generatins a random number.
+    // The seed is used each time Jackpot is distributing for generating a random number.
     // First seed has some value, after the every turn of the jackpot distribution will be changed 
     uint private seed = 1; // Default seed 
     
@@ -87,12 +90,15 @@ contract RCTokenTest is Ownable, ERC20Interface {
     // Used only for token sale jackpot distribution 
     int public maxAllowedManualDistribution = 111; 
 
-    // Either or not clear the jackpot participants lict after the Jackpot distribution
+    // Either or not clear the jackpot participants list after the Jackpot distribution
     bool public clearJackpotParticipantsAfterDistribution = false;
 
-    //The list with Jackpot participants. The more times address is in the list, the more chances to win the Jackpot
-    uint index = 0;
+    // Variable that holds last actual index of jackpotParticipants collection
+    uint private index = 0; 
+
+    // The list with Jackpot participants. The more times address is in the list, the more chances to win the Jackpot
     address[] private jackpotParticipants; 
+
     event SetReservingPercentage(uint _value);
     event SetReservingStep(uint _value);
     event SetJackpotMinimumAmount(uint _value);
@@ -130,14 +136,12 @@ contract RCTokenTest is Ownable, ERC20Interface {
     
     // Empty the jackpot participants list
     function clearJackpotParticipants() public onlyOwner returns (bool success) {
-        //delete jackpotParticipants;
-        //jackpotParticipants.length = 0;
         index = 0;
         return true;
     }
     
     // Using this function a user transfers tokens and participates in operating jackpot 
-    // User set the total transfer amount that includes the Jackpot reserving deposit
+    // User sets the total transfer amount that includes the Jackpot reserving deposit
     function transferWithReserving(address _to, uint _totalTransfer) public returns (bool success) {
         uint netTransfer = _totalTransfer * (100 - reservingPercentage) / 100; 
         require(balances[msg.sender] >= _totalTransfer && (_totalTransfer > netTransfer));
@@ -149,7 +153,7 @@ contract RCTokenTest is Ownable, ERC20Interface {
     }
 
     // Using this function a user transfers tokens and participates in operating jackpot 
-    // User set the net value of transfer without the Jackpot reserving deposit amount 
+    // User sets the net value of transfer without the Jackpot reserving deposit amount 
     function transferWithReservingNet(address _to, uint _netTransfer) public returns (bool success) {
         uint totalTransfer = _netTransfer * (100 + reservingPercentage) / 100; 
         require(balances[msg.sender] >= totalTransfer && (totalTransfer > _netTransfer));
@@ -160,8 +164,8 @@ contract RCTokenTest is Ownable, ERC20Interface {
         return true;
     }
 
-    // Using this function a spender transfers tokens and make an owner of funds a participatants of the operating Jackpot 
-    // User set the total transfer amount that includes the Jackpot reserving deposit
+    // Using this function a spender transfers tokens and make an owner of funds a participant of the operating Jackpot 
+    // User sets the total transfer amount that includes the Jackpot reserving deposit
     function transferFromWithReserving(address _from, address _to, uint _totalTransfer) public returns (bool success) {
         uint netTransfer = _totalTransfer * (100 - reservingPercentage) / 100; 
         require(balances[_from] >= _totalTransfer && (_totalTransfer > netTransfer));
@@ -185,7 +189,7 @@ contract RCTokenTest is Ownable, ERC20Interface {
     }
 
     // Withdraw deposit of Jackpot amount and add address to Jackpot Participants List according to transaction amount
-    function processJackpotDeposit(uint _totalTransfer, uint _netTransfer, address _participant) private returns (bool succeess) {
+    function processJackpotDeposit(uint _totalTransfer, uint _netTransfer, address _participant) private returns (bool success) {
         addAddressToJackpotParticipants(_participant, _totalTransfer);
 
         uint jackpotDeposit = _totalTransfer - _netTransfer;
@@ -197,34 +201,35 @@ contract RCTokenTest is Ownable, ERC20Interface {
     }
 
     // Add address to Jackpot Participants List
-    function addAddressToJackpotParticipants(address _participant, uint _transactionAmount) private returns (bool succeess) {
+    function addAddressToJackpotParticipants(address _participant, uint _transactionAmount) private returns (bool success) {
         uint timesToAdd = _transactionAmount / reservingStep;
         
         for (uint i = 0; i < timesToAdd; i++){
             if(index == jackpotParticipants.length) {
                 jackpotParticipants.length += 1;
             }
-                jackpotParticipants[index++] = _participant;
-            }
-            //jackpotParticipants.push(_participant);
+            jackpotParticipants[index++] = _participant;
+        }
 
         emit AddAddressToJackpotParticipants(_participant, timesToAdd);
         return true;        
     }
     
-    /* Distribute jackpot. Anyone can call this function, not only the owner of smartcontract */
+    // Distribute jackpot. For finding a winner we use random number that is produced by multiplying a previous seed  
+    // received from previous jackpot distribution and casted to uint last available block hash. 
+    // Remainder from the received random number and total number of participants will give an index of a winner in the Jackpot participants list
     function distributeJackpot(uint _nextSeed) public onlyOwner returns (bool success) {
         assert(balances[0] >= jackpotMinimumAmount);
         assert(_nextSeed > 0);
 
-        uint additionalSeed = uint(block.blockhash(block.number - 1));
-        uint totalSeed = 0;
+        uint additionalSeed = uint(blockhash(block.number - 1));
+        uint rnd = 0;
         
-        while(totalSeed < jackpotParticipants.length) {
-            totalSeed += additionalSeed * seed;
+        while(rnd < index) {
+            rnd += additionalSeed * seed;
         }
         
-        uint winner = totalSeed % jackpotParticipants.length;
+        uint winner = rnd % index;
         balances[jackpotParticipants[winner]] += balances[0];
         emit Transfer(0, jackpotParticipants[winner], balances[0]);
         balances[0] = 0;
@@ -236,7 +241,7 @@ contract RCTokenTest is Ownable, ERC20Interface {
         return true;
     }
 
-    /* Distribute Token Sale Jackpot by minting token sale jackpot directly to 0x0 address and calling distributeJackpot function */
+    // Distribute Token Sale Jackpot by minting token sale jackpot directly to 0x0 address and calling distributeJackpot function 
     function distributeTokenSaleJackpot(uint _nextSeed, uint _amount) public onlyOwner returns (bool success) {
         require (maxAllowedManualDistribution > 0);
         if (mintTokens(0, _amount) && distributeJackpot(_nextSeed)) {
@@ -245,14 +250,18 @@ contract RCTokenTest is Ownable, ERC20Interface {
         return true;
     }
 
-    /* ====== ERC20 IMPLEMENTATION ====== */
+
+
+    /** 
+     ====== ERC20 IMPLEMENTATION ====== 
+     */
     
-    // Returns total supply of tokens including lockup funds and current Jackpot deposit
+    // Return total supply of tokens including locked-up funds and current Jackpot deposit
     function totalSupply() public view returns (uint) {
         return _totalSupply;
     }
 
-    // Gets the balance of the specified address
+    // Get the balance of the specified address
     function balanceOf(address _owner) public view returns (uint balance) {
         return balances[_owner];
     }
@@ -276,8 +285,9 @@ contract RCTokenTest is Ownable, ERC20Interface {
         }
     }
 
+    // Main transfer function. Checking of balances is made in calling function
     function transferMain(address _from, address _to, uint _value) private returns (bool success) {
-        require(_to != address(0)); 
+        require(_to != address(0));
         assert(balances[_to] + _value >= balances[_to]);
         
         balances[_from] -= _value;
@@ -286,7 +296,7 @@ contract RCTokenTest is Ownable, ERC20Interface {
         return true;
     }
 
-    // Aprove the passed address to spend the specified amount of tokens on beahlf of msg.sender
+    // Approve the passed address to spend the specified amount of tokens on behalf of msg.sender
     function approve(address _spender, uint _value) public returns (bool success) {
         allowed[msg.sender][_spender] = _value;
         emit Approval(msg.sender, _spender, _value);
@@ -301,7 +311,7 @@ contract RCTokenTest is Ownable, ERC20Interface {
 
 
     /**
-    ====== LOCKUP IMPLEMENTATION ====== 
+     ====== LOCK-UP IMPLEMENTATION ====== 
      */
 
     function unlockOwnFunds() public returns (bool success) {
@@ -343,7 +353,7 @@ contract RCTokenTest is Ownable, ERC20Interface {
         return true;
     }
 
-    // Mint RAcoin lockup tokens
+    // Mint RAcoin locked-up tokens
     // Using different types of minting functions has no effect on total limit of 20,000,000,000 RAC that can be created
     function mintLockupTokens(address _target, uint _mintedAmount, uint _unlockTime) public onlyOwner returns (bool success) {
         require(_mintedAmount <= unmintedTokens);
@@ -353,11 +363,11 @@ contract RCTokenTest is Ownable, ERC20Interface {
         unmintedTokens -= _mintedAmount;
         _totalSupply += _mintedAmount;
         
-        emit Transfer(1, _target, _mintedAmount); 
+        emit Transfer(1, _target, _mintedAmount); //TODO
         return true;
     }
 
-    // Mint RAcoin tokens for token sale participants with including them to Jackpot list
+    // Mint RAcoin tokens for token sale participants and add them to Jackpot list
     // Using different types of minting functions has no effect on total limit of 20,000,000,000 RAC that can be created
     function mintTokensWithIncludingInJackpot(address _target, uint _mintedAmount) public onlyOwner returns (bool success) {
         require(maxAllowedManualDistribution > 0);
@@ -367,7 +377,7 @@ contract RCTokenTest is Ownable, ERC20Interface {
         return true;
     }
 
-    // Mint RAcoin tokens and aproves the passed address to spend the minted amount of tokens
+    // Mint RAcoin tokens and approve the passed address to spend the minted amount of tokens
     // Using different types of minting functions has no effect on total limit of 20,000,000,000 RAC that can be created
     function mintTokensWithApproval(address _target, uint _mintedAmount, address _spender) public onlyOwner returns (bool success) {
         require(_mintedAmount <= unmintedTokens);
